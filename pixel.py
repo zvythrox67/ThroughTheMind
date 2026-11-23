@@ -201,3 +201,32 @@ def draw_adult(s, fx, fy, kind):
     pygame.draw.rect(s, hair, (fx - 6, fy - 42, 12, 5))
     pygame.draw.rect(s, (30, 16, 56), (fx - 3, fy - 36, 1, 2))
     pygame.draw.rect(s, (30, 16, 56), (fx + 2, fy - 36, 1, 2))
+
+def draw_sprite(s, name, fx, fy, direction):
+    s.blit(ui.sprite(name, direction), (fx - 24, fy - 46))
+
+def draw_scene(s, objs, player, t):
+    pname, px, py, facing, bob, moving = player
+    items = []
+    for o in objs:
+        items.append((o.y + o.h, 0, o))
+        for n in o.npcs:
+            items.append((o.y + n[2], 1, (o, n)))
+    items.append((py, 2, None))
+    items.sort(key=lambda it: (it[0], it[1]))
+    for _, kind, data in items:
+        if kind == 0:
+            draw_obj(s, data, t)
+        elif kind == 1:
+            o, n = data
+            fx, fy = o.x + n[1], o.y + n[2]
+            if n[0] in ("teacher", "counselor", "barista"):
+                draw_adult(s, fx // 2, fy // 2, n[0])
+            else:
+                pygame.draw.ellipse(s, SHADOW, (fx // 2 - 12, fy // 2 - 4, 24, 8))
+                d = ui.dir_toward(px - fx, py - fy) if math.hypot(px - fx, py - fy) < 230 else "south"
+                draw_sprite(s, n[0], fx // 2, fy // 2, d)
+        else:
+            pygame.draw.ellipse(s, SHADOW, (int(px) // 2 - 12, int(py) // 2 - 4, 24, 8))
+            b = int(abs(math.sin(bob)) * 2) if moving else 0
+            draw_sprite(s, pname, int(px) // 2, int(py) // 2 - b, facing)
