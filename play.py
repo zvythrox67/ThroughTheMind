@@ -40,8 +40,8 @@ class PlayScene:
         self.slide = 0.0
         self.time = 0.0
         self.tab = (W - 130, 12, 118, 32)
-        self.vig = ui.make_vignette((30, 14, 60), 0.42)
-        self.tunnel = ui.make_vignette((16, 6, 40), 0.18)
+        self.vig = ui.make_scene((30, 14, 60), 0.42)
+        self.tunnel = ui.make_scene((16, 6, 40), 0.18)
         self.small = pygame.Surface((pixel.SW, pixel.SH))
         self.game.start_level()
         self.new_level()
@@ -74,8 +74,9 @@ class PlayScene:
         self.panic_t = seconds
         self.flash_t = 0.5
 
-    def exit_to_menu(self):
-        self.app.show_menu()
+    def pause(self):
+        self.say(Dialogue("Paused", "Take a break whenever you need to.")
+                 .choice("Resume"))
 
     def new_level(self):
         g = self.game
@@ -153,10 +154,6 @@ class PlayScene:
         self.sum = None
         if fn:
             fn()
-
-    def pause(self):
-        self.say(Dialogue("Paused", "Take a break whenever you need to.")
-                 .choice("Resume").choice("Back to the menu", self.app.show_menu))
 
     def activate(self, o):
         if o.exit:
