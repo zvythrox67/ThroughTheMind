@@ -186,3 +186,153 @@ def title_background(clean = False):
         x = i * 80
         pygame.draw.polygon(bg, LAV, [(x, H), (x + 40, H - 150 - (i % 3) * 30), (x + 80, H)])
     return bg
+
+# button
+class Button:
+    def __init__(self, label, rect, on_click, size=34, enabled=True):
+        self.label, self.rect, self.on_click, self.size, self.enabled = label, rect, on_click, size, enabled
+        self.hover = False
+
+    def contains(self, pos):
+        x, y, w, h = self.rect
+        return x <= pos[0] <= x + w and y <= pos[1] <= y + h
+
+    def event(self, e):
+        if e.type == pygame.MOUSEMOTION:
+            self.hover = self.contains(e.pos)
+        elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1 and self.enabled and self.contains(e.pos):
+            self.on_click()
+
+    def draw(self, surf):
+        x, y, w, h = self.rect
+        if not self.enabled:
+            fill, edge, col = (58, 44, 104), (88, 78, 150), (150, 140, 190)
+        elif self.hover:
+            fill, edge, col = PINK, YELLOW, WHITE
+        else:
+            fill, edge, col = LAV_DK, LAV_LT, TEXT
+        pygame.draw.rect(surf, INDIGO_DK, (x + 4, y + 6, w, h))
+        pygame.draw.rect(surf, fill, (x, y, w, h))
+        pygame.draw.rect(surf, edge, (x, y, w, h), 4)
+        lines = self.label.split("\n")
+        lh = font(self.size).get_height()
+        ty = y + (h - lh * len(lines)) // 2
+        for ln in lines:
+            text(surf, ln, (x + w // 2, ty), self.size, col, center=True)
+            ty += lh
+
+
+class DialogueBox:
+    def __init__(self):
+        self.cur = None
+        self.queue = []
+        self.sel = 0
+        self.rects = []
+        self.cont_rect = None
+
+    def active(self):
+        return self.cur is not None
+
+    def say(self, d):
+        if self.cur is None:
+            self.cur, self.sel = d, 0
+        else:
+            self.queue.append(d)
+
+    def clear(self):
+        self.cur = None
+        self.queue = []
+
+    def choose(self, i):
+        d = self.cur
+        self.cur = None
+        if d.choices:
+            fn = d.choices[i][1] if i < len(d.choices) else None
+        else:
+            fn = d.on_close
+        if fn:
+            fn()
+        self.flush()
+
+    def flush(self):
+        if self.cur is None and self.queue:
+            self.cur, self.sel = self.queue.pop(0), 0
+
+    def event(self, e):
+        d = self.cur
+        if d is None:
+            return
+        n = max(1, len(d.choices))
+        if e.type == pygame.KEYDOWN:
+            if e.key in (pygame.K_UP, pygame.K_w):
+                self.sel = (self.sel - 1) % n
+            elif e.key in (pygame.K_DOWN, pygame.K_s):
+                self.sel = (self.sel + 1) % n
+            elif e.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
+                self.choose(self.sel)
+            elif pygame.K_1 <= e.key <= pygame.K_9 and e.key - pygame.K_1 < len(d.choices):
+                self.choose(e.key - pygame.K_1)
+        elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+            if d.choices:
+                for i, r in enumerate(self.rects):
+                    if r[0] <= e.pos[0] <= r[0] + r[2] and r[1] <= e.pos[1] <= r[1] + r[3]:
+                        self.choose(i)
+                        return
+            elif self.cont_rect:
+                r = self.cont_rect
+                if r[0] <= e.pos[0] <= r[0] + r[2] and r[1] <= e.pos[1] <= r[1] + r[3]:
+                    self.choose(0)
+        elif e.type == pygame.MOUSEMOTION and d.choices:
+            for i, r in enumerate(self.rects):
+                if r[0] <= e.pos[0] <= r[0] + r[2] and r[1] <= e.pos[1] <= r[1] + r[3]:
+                    self.sel = i
+
+    def draw(self, surf):
+        d = self.cur
+        if d is None:
+            return
+        bw, pad = W - 100, 18
+        lines = wrap(d.text, 26, bw - pad * 2)
+        lh = 26
+        rows = len(d.choices) if d.choices else 1
+        h = pad + (28 if d.speaker else 0) + len(lines) * lh + 8 + rows * 38 + pad
+        x, y = 50, H - 16 - h
+        panel(surf, (x, y, bw, h), (34, 20, 70, 242))
+        ty = y + pad
+        if d.speaker:
+            text(surf, d.speaker, (x + pad, ty), 28, YELLOW)
+            ty += 28
+        for ln in lines:
+            text(surf, ln, (x + pad, ty), 26)
+            ty += lh
+        ty += 8
+        self.rects = []
+        self.cont_rect = None
+        if d.choices:
+            for i, (label, _) in enumerate(d.choices):
+                r = (x + pad, ty, bw - pad * 2, 34)
+                self.rects.append(r)
+                pygame.draw.rect(surf, PINK if i == self.sel else (64, 43, 115), r)
+                if i == self.sel:
+                    pygame.draw.rect(surf, YELLOW, r, 2)
+                text(surf, "%d.  %s" % (i + 1, label), (r[0] + 12, r[1] + 8), 25, WHITE if i == self.sel else TEXT)
+                ty += 38
+        else:
+            r = (x + pad, ty, 210, 34)
+            self.cont_rect = r
+            pygame.draw.rect(surf, PINK, r)
+            pygame.draw.rect(surf, YELLOW, r, 2)
+            text(surf, "Continue  (Enter)", (r[0] + 12, r[1] + 8), 25, WHITE)
+
+
+def bar(surf, x, y, name, v, bad_high=False, width=140):
+    text(surf, name, (x, y), 22)
+    bx = x + 125
+    pygame.draw.rect(surf, (64, 43, 115), (bx, y + 3, width, 13))
+    frac = max(0.0, min(1.0, v / 100.0))
+    good = 1 - frac if bad_high else frac
+    col = GOOD if good > 0.6 else YELLOW if good > 0.35 else BAD
+    if frac > 0:
+        pygame.draw.rect(surf, col, (bx, y + 3, max(5, int(width * frac)), 13))
+    pygame.draw.rect(surf, LAV, (bx, y + 3, width, 13), 2)
+    text(surf, "%d%%" % round(v), (bx + width + 8, y), 22)
