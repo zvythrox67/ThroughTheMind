@@ -317,3 +317,65 @@ class CheckGame(MiniGame):
         else:
             text(surf, "Type your answer, then press Enter.", (150, 400), 28, ui.LAV_DK)
         text(surf, "Re-checks: %d" % self.rechecks, (W - 40, 40), 32, ui.PINK, right=True)
+
+class DecisionGame(MiniGame):
+    title = "Where do you sit?"
+    help = "Press 1, 2 or 3 (or click a card). The longer you wait, the more 'what ifs' pile up."
+    OPTIONS = [
+        ("Sit at the friends' table", ["What if I have nothing to say?", "What if they stop talking when I sit down?"]),
+        ("Take a tray to the quiet corner", ["What if they think I'm avoiding them?", "What if I look like a loner?"]),
+        ("Skip lunch", ["What if I get lightheaded later?", "What if everyone notices I didn't eat?"]),
+    ]
+
+    def __init__(self, params):
+        super().__init__()
+        self.rate = (0.07 + 0.12 * params.get("worry", 50) / 100) * (0.75 + 0.35 * params.get("sev", 1.0))
+        self.spiral = 0.0
+        self.cards = [(52 + i * 316, 230, 296, 240) for i in range(3)]
+
+    def pick(self, i):
+        self.finish({"choice": i, "spiral": min(1.0, self.spiral)})
+
+    def event(self, e):
+        if self.ready > 0 or self.done:
+            return
+        if e.type == pygame.KEYDOWN and pygame.K_1 <= e.key <= pygame.K_3:
+            self.pick(e.key - pygame.K_1)
+        elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+            for i, r in enumerate(self.cards):
+                if r[0] <= e.pos[0] <= r[0] + r[2] and r[1] <= e.pos[1] <= r[1] + r[3]:
+                    self.pick(i)
+
+    def step(self, dt):
+        self.spiral += self.rate * dt
+        if self.spiral >= 1.0:
+            self.finish({"choice": 2, "spiral": 1.0})  # froze: the bell rang
+
+    def render(self, surf):
+        surf.fill((91, 68, 154))
+        for i in range(0, W, 48):
+            pygame.draw.polygon(surf, (ui.PINK, ui.YELLOW, ui.CORAL, ui.BLUE)[(i // 48) % 4], [(i, 0), (i + 28, 0), (i + 14, 34)])
+        text(surf, "Lunch.  Where do you sit?", (W // 2, 70), 58, ui.CREAM, center=True, shadow=True)
+        pygame.draw.rect(surf, ui.INDIGO, (262, 130, 500, 18))
+        col = ui.GOOD if self.spiral < 0.4 else ui.YELLOW if self.spiral < 0.7 else ui.PINK
+        pygame.draw.rect(surf, col, (262, 130, max(6, int(500 * self.spiral)), 18))
+        pygame.draw.rect(surf, ui.LAV_LT, (262, 130, 500, 18), 2)
+        text(surf, "Thought spiral", (W // 2, 160), 30, ui.CREAM, center=True)
+        shake = self.spiral * 5
+        for i, (r, (label, risks)) in enumerate(zip(self.cards, self.OPTIONS)):
+            ox = int(math.sin(self.t * 31 + i) * shake)
+            oy = int(math.cos(self.t * 27 + i) * shake)
+            x, y, w, h = r[0] + ox, r[1] + oy, r[2], r[3]
+            pygame.draw.rect(surf, ui.INDIGO_DK, (x + 5, y + 7, w, h))
+            pygame.draw.rect(surf, ui.CREAM, (x, y, w, h))
+            pygame.draw.rect(surf, ui.PINK, (x, y, w, h), 4)
+            text(surf, str(i + 1), (x + 16, y + 10), 58, ui.PINK)
+            for j, ln in enumerate(ui.wrap(label, 32, w - 30)):
+                text(surf, ln, (x + 16, y + 62 + j * 28), 32, ui.INDIGO)
+            for j, risk in enumerate(risks):
+                if self.spiral > 0.2 + 0.25 * j:
+                    for k, ln in enumerate(ui.wrap(risk, 24, w - 30)):
+                        text(surf, ln, (x + 16, y + 130 + j * 56 + k * 22), 24, (190, 60, 110))
+        for n in range(int(self.spiral * 7)):
+            t = THOUGHTS[n % len(THOUGHTS)]
+            text(surf, t, (60 + (n * 211) % 700, 510 + (n * 37) % 90), 26, ui.CORAL, shadow=True)
