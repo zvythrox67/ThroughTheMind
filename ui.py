@@ -156,3 +156,33 @@ def sprite(name, direction, scale = 1):
 def dir_toward(dx, dy):
     idx = int(round(math.atan2(dy, dx) / (math.pi / 4))) % 8
     return DIRS[idx]
+
+# Title/bg
+
+def title_background(clean = False):
+    p = os.path.join(HERE, "assets", "title.png")
+    if os.path.exists(p):
+        img = pygame.image.load(p).convert_alpha()
+        iw, ih = img.get_size()
+        scale = H / float(ih)
+        nw = int(iw * scale)
+        img = pygame.transform.scale(img, (nw, H))
+        bg = pygame.Surface((W, H))
+        bg.blit(img, ((W - nw) // 2, 0))
+        if clean:
+            strip = pygame.Surface((W, 90))
+            strip.blit(bg, (0, -170))
+            bg.blit(strip, (0, 288))
+        return bg
+    bg = pygame.Surface((W, H))
+    for y in range(H):
+        t = y / float(H)
+        pygame.draw.line(bg, (int(46 + 40 * t), int(27 + 30 * t), int(91 + 60 * t)), (0, y), (W, y))
+    pygame.draw.circle(bg, YELLOW, (470, 70), 40)
+    for i in range(40):
+        x, y = (i * 193) % W, (i * 71) % 300
+        pygame.draw.rect(bg, YELLOW, (x, y, 4, 4))
+    for i in range(14):
+        x = i * 80
+        pygame.draw.polygon(bg, LAV, [(x, H), (x + 40, H - 150 - (i % 3) * 30), (x + 80, H)])
+    return bg
