@@ -379,3 +379,69 @@ class DecisionGame(MiniGame):
         for n in range(int(self.spiral * 7)):
             t = THOUGHTS[n % len(THOUGHTS)]
             text(surf, t, (60 + (n * 211) % 700, 510 + (n * 37) % 90), 26, ui.CORAL, shadow=True)
+
+class SortGame(MiniGame):
+    title = "Worry sorting"
+    help = "A counseling skill: is this worry something you can control? LEFT = I can do something. RIGHT = I can't control it."
+    CAN = ["Studying for the quiz tonight", "Asking a friend to hang out", "How much sleep I get", "Practicing my presentation",
+           "Taking a walk after school", "Asking the teacher a question"]
+    CANT = ["Whether it rains on Saturday", "What other people think of me", "Whether the test will be hard",
+            "What happens ten years from now", "My friend being in a bad mood", "Things that haven't happened yet"]
+
+    def __init__(self, params=None):
+        super().__init__()
+        cards = [(t, True) for t in self.rng.sample(self.CAN, 4)] + [(t, False) for t in self.rng.sample(self.CANT, 4)]
+        self.rng.shuffle(cards)
+        self.cards = cards
+        self.i = 0
+        self.score = 0
+        self.fb = ""
+        self.fb_t = 0.0
+        self.fb_ok = True
+
+    def event(self, e):
+        if self.ready > 0 or self.done or self.fb_t > 0 or e.type != pygame.KEYDOWN:
+            return
+        if e.key in (pygame.K_LEFT, pygame.K_a):
+            ans = True
+        elif e.key in (pygame.K_RIGHT, pygame.K_d):
+            ans = False
+        else:
+            return
+        truth = self.cards[self.i][1]
+        self.fb_ok = ans == truth
+        if self.fb_ok:
+            self.score += 1
+        if self.fb_ok:
+            self.fb = "Yes. You can take a step on this." if truth else "Right. This is outside your control. You can let it be."
+        else:
+            self.fb = "Not quite. You actually can do something about this." if truth else "Not quite. You can't control this one."
+        self.fb_t = 1.4
+
+    def step(self, dt):
+        if self.fb_t > 0:
+            self.fb_t -= dt
+            if self.fb_t <= 0:
+                self.i += 1
+                if self.i >= len(self.cards):
+                    self.finish({"score": self.score / len(self.cards)})
+
+    def render(self, surf):
+        surf.fill(ui.INDIGO)
+        pygame.draw.rect(surf, (60, 150, 140), (0, 0, 300, H))
+        pygame.draw.rect(surf, ui.VIOLET, (W - 300, 0, 300, H))
+        text(surf, "I CAN", (150, 180), 56, ui.CREAM, center=True, shadow=True)
+        text(surf, "do something", (150, 232), 36, ui.CREAM, center=True, shadow=True)
+        text(surf, "I CAN'T", (W - 150, 180), 56, ui.CREAM, center=True, shadow=True)
+        text(surf, "control it", (W - 150, 232), 36, ui.CREAM, center=True, shadow=True)
+        text(surf, "<  LEFT", (150, 560), 38, ui.YELLOW, center=True)
+        text(surf, "RIGHT  >", (W - 150, 560), 38, ui.YELLOW, center=True)
+        if self.i < len(self.cards):
+            pygame.draw.rect(surf, ui.CREAM, (350, 200, 324, 220))
+            pygame.draw.rect(surf, ui.PINK, (350, 200, 324, 220), 5)
+            for j, ln in enumerate(ui.wrap(self.cards[self.i][0], 38, 290)):
+                text(surf, ln, (W // 2, 250 + j * 40), 38, ui.INDIGO, center=True)
+            text(surf, "Worry %d of %d" % (self.i + 1, len(self.cards)), (W // 2, 120), 38, ui.CREAM, center=True)
+        if self.fb_t > 0:
+            for j, ln in enumerate(ui.wrap(self.fb, 30, 640)):
+                text(surf, ln, (W // 2, 470 + j * 30), 30, ui.GOOD if self.fb_ok else ui.PINK, center=True, shadow=True)
