@@ -190,3 +190,56 @@ class FocusGame(MiniGame):
         pygame.draw.rect(surf, ui.GOOD, (330, 150, int(364 * left / self.duration), 14))
         pygame.draw.rect(surf, ui.LAV_LT, (330, 150, 364, 14), 2)
         text(surf, "Caught %d     Worries hit %d" % (self.good, self.hits), (W // 2, 176), 30, ui.CREAM, center=True, shadow=True)
+
+class VoiceGame(MiniGame):
+    title = "Steady voice"
+    help = "Hold LEFT or RIGHT to keep the dot inside the zone while you present. The audience's attention makes your voice shake."
+    DURATION = 20.0
+
+    def __init__(self, params):
+        super().__init__()
+        sev = params.get("sev", 1.0)
+        self.tremor = (1.0 + 1.6 * params.get("worry", 50) / 100 + (0.6 if params.get("presenting") else 0)) * (0.7 + 0.4 * sev)
+        self.x = 0.0
+        self.v = 0.0
+        self.in_zone = 0.0
+        self.spike = 0.0
+        self.next_spike = 4.0
+
+    def step(self, dt):
+        dx = self.axis((pygame.K_a, pygame.K_LEFT), (pygame.K_d, pygame.K_RIGHT))
+        self.next_spike -= dt
+        if self.next_spike <= 0:
+            self.spike, self.next_spike = 1.5, self.rng.uniform(4, 6)
+        self.spike = max(0.0, self.spike - dt)
+        k = self.tremor * (2.0 if self.spike > 0 else 1.0)
+        self.v += self.rng.uniform(-1, 1) * k * dt * 6 + dx * dt * 5.5
+        self.v *= max(0.0, 1 - 0.9 * dt)
+        self.x = max(-1.2, min(1.2, self.x + self.v * dt))
+        if abs(self.x) < 0.22:
+            self.in_zone += dt
+        if self.t >= self.DURATION:
+            self.finish({"score": self.in_zone / self.DURATION})
+
+    def render(self, surf):
+        surf.fill(ui.INDIGO_DK)
+        mx = W // 2 + self.x * 300
+        wide = 1.0 + (0.5 if self.spike > 0 else 0.0)
+        for i in range(9):
+            ui.draw_eye(surf, 110 + i * 100, 110 + (i % 2) * 40, 26 * wide, 0.9, mx, 380)
+        pygame.draw.polygon(surf, ui.INDIGO, [(W // 2 - 60, 200), (W // 2 + 60, 200), (W // 2 + 220, H), (W // 2 - 220, H)])
+        pygame.draw.rect(surf, (176, 112, 120), (W // 2 - 90, 520, 180, 90))
+        pygame.draw.rect(surf, (214, 160, 140), (W // 2 - 90, 520, 180, 14))
+        img = ui.sprite(ui.HERO, "north", 3)
+        surf.blit(img, (W // 2 - img.get_width() // 2, 400))
+        pygame.draw.rect(surf, ui.INDIGO, (W // 2 - 330, 300, 660, 40))
+        pygame.draw.rect(surf, ui.LAV, (W // 2 - 330, 300, 660, 40), 3)
+        zone_w = int(0.44 * 300)
+        pygame.draw.rect(surf, ui.GOOD, (W // 2 - zone_w, 304, zone_w * 2, 32))
+        inside = abs(self.x) < 0.22
+        pygame.draw.circle(surf, ui.YELLOW if inside else ui.PINK, (int(mx), 320), 18)
+        pygame.draw.circle(surf, ui.INDIGO_DK, (int(mx), 320), 18, 3)
+        text(surf, "Your voice", (W // 2, 262), 34, center=True)
+        left = max(0.0, self.DURATION - self.t)
+        text(surf, "%d s left" % math.ceil(left), (W - 30, 20), 32, right=True)
+        text(surf, "Steady: %d%%" % round(100 * self.in_zone / max(0.1, self.t)), (30, 20), 32)
