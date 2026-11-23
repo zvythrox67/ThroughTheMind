@@ -3,6 +3,7 @@ import sys
 import pygame
 import ui
 from ui import W, H, Button, text
+import asyncio
 
 class StartScene:
     def __init__(self, app):
@@ -35,6 +36,7 @@ class App:
         pygame.display.set_caption("Through the Mind")
         self.clock = pygame.time.Clock()
         self.scene = None
+        self.running = True
         self.show_start()
 
     def show_start(self):
@@ -45,19 +47,24 @@ class App:
         self.scene = PlayScene(self)
 
     def quit(self):
-        pygame.quit()
-        sys.exit()
+        self.running = False
 
-    def run(self):
-        while True:
+    async def run(self):
+        while self.running:
             dt = min(0.05, self.clock.tick(60) / 1000.0)
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     self.quit()
-                self.scene.event(e)
+                else:
+                    self.scene.event(e)
+            if not self.running:
+                break
             self.scene.update(dt)
             self.scene.draw(self.screen)
             pygame.display.flip()
+            await asyncio.sleep(0)
+        pygame.quit()
 
 if __name__ == "__main__":
-    App().run()
+    asyncio.run(App().run())
+    

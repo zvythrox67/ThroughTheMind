@@ -353,7 +353,7 @@ class Game:
         lines.append("If you or someone you know is struggling, talk to a trusted adult, a school counselor or a "
                      "doctor. In the US, call or text 988 anytime.")
         self.ui.summary("You made it" if won else "End of the line", "\n".join(lines),
-                        [("Main menu", self.ui.exit_to_menu)])
+                        [("Quit", self.ui.exit_to_menu)])
 
     def say(self, d):
         if d.choices:
