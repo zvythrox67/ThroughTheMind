@@ -445,3 +445,86 @@ class SortGame(MiniGame):
         if self.fb_t > 0:
             for j, ln in enumerate(ui.wrap(self.fb, 30, 640)):
                 text(surf, ln, (W // 2, 470 + j * 30), 30, ui.GOOD if self.fb_ok else ui.PINK, center=True, shadow=True)
+
+class SleepGame(MiniGame):
+    title = "Racing thoughts"
+    help = "You can't fall asleep. Move the glow with the arrow keys / WASD and pop each worry before it reaches your pillow."
+    DURATION = 22.0
+    TEXTS = THOUGHTS + ["What if I oversleep?", "Did I say something weird?", "Tomorrow...", "What if I can't sleep?"]
+
+    def __init__(self, params):
+        super().__init__()
+        sev = params.get("sev", 1.0)
+        self.rate = max(0.34, 0.95 - 0.3 * params.get("worry", 50) / 100 - 0.14 * (sev - 0.7))
+        self.speed = 0.85 + 0.2 * sev
+        self.cx, self.cy = W / 2, H / 2
+        self.px, self.py = W / 2, H / 2 + 150
+        self.bubbles = []
+        self.spawn = 0.3
+        self.popped = self.missed = 0
+        self.flash = 0.0
+
+    def step(self, dt):
+        dx = self.axis((pygame.K_a, pygame.K_LEFT), (pygame.K_d, pygame.K_RIGHT))
+        dy = self.axis((pygame.K_w, pygame.K_UP), (pygame.K_s, pygame.K_DOWN))
+        if dx and dy:
+            dx, dy = dx * 0.7071, dy * 0.7071
+        self.px = max(30, min(W - 30, self.px + dx * 340 * dt))
+        self.py = max(30, min(H - 30, self.py + dy * 340 * dt))
+        self.flash = max(0.0, self.flash - dt)
+        self.spawn -= dt
+        if self.spawn <= 0 and self.t < self.DURATION - 3:
+            self.spawn = self.rate
+            ang = self.rng.uniform(0, 2 * math.pi)
+            self.bubbles.append({"x": self.cx + math.cos(ang) * 520, "y": self.cy + math.sin(ang) * 400,
+                                 "sp": self.rng.uniform(55, 85) * self.speed, "txt": self.rng.choice(self.TEXTS)})
+        for b in self.bubbles[:]:
+            dx2, dy2 = self.cx - b["x"], self.cy - b["y"]
+            d = math.hypot(dx2, dy2)
+            b["x"] += dx2 / d * b["sp"] * dt
+            b["y"] += dy2 / d * b["sp"] * dt
+            if math.hypot(b["x"] - self.px, b["y"] - self.py) < 52:
+                self.bubbles.remove(b)
+                self.popped += 1
+            elif d < 50:
+                self.bubbles.remove(b)
+                self.missed += 1
+                self.flash = 0.35
+        if self.t >= self.DURATION:
+            self.missed += len(self.bubbles)
+            self.finish({"score": self.popped / max(1, self.popped + self.missed)})
+
+    def render(self, surf):
+        surf.fill(ui.INDIGO_DK)
+        for i in range(44):
+            sx, sy = (i * 197) % W, (i * 89) % H
+            pygame.draw.rect(surf, ui.YELLOW, (sx, sy, 3, 3))
+            if i % 3 == 0:
+                pygame.draw.rect(surf, ui.YELLOW, (sx - 2, sy + 1, 7, 1))
+                pygame.draw.rect(surf, ui.YELLOW, (sx + 1, sy - 2, 1, 7))
+        pygame.draw.rect(surf, ui.VIOLET, (W // 2 - 150, H // 2 - 120, 300, 240))
+        pygame.draw.rect(surf, ui.LAV_LT, (W // 2 - 150, H // 2 - 120, 300, 240), 4)
+        pygame.draw.rect(surf, ui.PINK, (W // 2 - 140, H // 2 - 10, 280, 120))
+        pygame.draw.rect(surf, ui.CREAM, (W // 2 - 70, H // 2 - 100, 140, 70))
+        img = ui.sprite(ui.HERO, "south", 3)
+        surf.blit(img, (W // 2 - img.get_width() // 2, H // 2 - 70))
+        for b in self.bubbles:
+            x, y = int(b["x"]), int(b["y"])
+            pygame.draw.circle(surf, ui.LAV_DK, (x, y), 34)
+            pygame.draw.circle(surf, ui.LAV_LT, (x, y), 34, 3)
+            for j, ln in enumerate(ui.wrap(b["txt"], 18, 100)[:3]):
+                text(surf, ln, (x, y - 14 + j * 15), 18, ui.TEXT, center=True)
+        pygame.draw.circle(surf, ui.YELLOW, (int(self.px), int(self.py)), 26, 4)
+        pygame.draw.circle(surf, ui.CREAM, (int(self.px), int(self.py)), 10)
+        if self.flash > 0:
+            ui.tint(surf, (251, 107, 162), self.flash)
+        text(surf, "Popped %d     Kept you awake %d" % (self.popped, self.missed), (W // 2, 24), 34, center=True)
+        left = max(0.0, self.DURATION - self.t)
+        pygame.draw.rect(surf, ui.INDIGO, (330, 62, 364, 10))
+        pygame.draw.rect(surf, ui.YELLOW, (330, 62, int(364 * left / self.DURATION), 10))
+
+FACTORY = {"breathing": BreathingGame, "focus": FocusGame, "voice": VoiceGame, "check": CheckGame,
+           "decision": DecisionGame, "sort": SortGame, "sleep": SleepGame}
+
+def make(kind, params):
+    return FACTORY[kind](params)
