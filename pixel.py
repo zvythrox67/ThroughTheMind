@@ -124,3 +124,80 @@ def make_room_bg(room):
             pygame.draw.line(s, shade(wall, 0.3), (lx, 0), (lx, 24), 1)
             pygame.draw.circle(s, ui.YELLOW, (lx, 28), 5)
     return s
+
+#objects
+def draw_obj(s, o, t):
+    x, y, w, h = o.x // 2, o.y // 2, o.w // 2, o.h // 2
+    k, c = o.kind, o.color
+    if k == "npcs":
+        return
+    if k == "door":
+        pygame.draw.rect(s, (30, 16, 56), (x - 1, y - 1, w + 2, h + 2))
+        pygame.draw.rect(s, shade((150, 100, 90), -0.1), (x + 1, y + 1, w - 2, h - 2))
+        pygame.draw.rect(s, (110, 70, 80), (x + 3, y + 3, w - 6, h - 6), 1)
+        pygame.draw.rect(s, ui.YELLOW, (x + w - 8, y + h // 2, 3, 3))
+        return
+    box(s, x, y, w, h, c)
+    if k == "bed":
+        pygame.draw.rect(s, shade(c, 0.15), (x + 20, y + 4, w - 24, h - 9))
+        pygame.draw.rect(s, shade(c, -0.25), (x + 20, y + h // 2, w - 24, 2))
+        pygame.draw.rect(s, ui.CREAM, (x + 4, y + 6, 14, h - 16))
+        pygame.draw.rect(s, shade(ui.CREAM, -0.2), (x + 4, y + h - 12, 14, 2))
+    elif k == "table":
+        pygame.draw.rect(s, shade(c, 0.18), (x + 3, y + 5, w - 6, h - 12))
+        for px_ in (x + w // 4, x + 3 * w // 4):
+            pygame.draw.circle(s, ui.CREAM, (px_, y + h // 2 - 2), 4)
+        pygame.draw.rect(s, shade(c, -0.6), (x + 2, y + h - 3, 3, 3))
+        pygame.draw.rect(s, shade(c, -0.6), (x + w - 5, y + h - 3, 3, 3))
+    elif k == "desk":
+        pygame.draw.rect(s, ui.BLUE, (x + 5, y + 5, 12, 8))
+        pygame.draw.rect(s, ui.CREAM, (x + 19, y + 6, 10, 7))
+        if w > 50:
+            pygame.draw.rect(s, ui.YELLOW, (x + w - 12, y + 5, 4, 4))
+    elif k == "bus":
+        pygame.draw.rect(s, ui.CORAL, (x + 1, y + h // 2, w - 2, 3))
+        for i in range(4):
+            pygame.draw.rect(s, ui.INDIGO_DK, (x + 8 + i * 22, y + 8, 16, 14))
+            pygame.draw.rect(s, ui.BLUE, (x + 9 + i * 22, y + 9, 14, 12))
+        for wxx in (x + 14, x + w - 22):
+            pygame.draw.circle(s, (30, 16, 56), (wxx + 4, y + h - 2), 6)
+            pygame.draw.circle(s, ui.LAV_LT, (wxx + 4, y + h - 2), 2)
+        pygame.draw.rect(s, ui.CREAM, (x + w - 5, y + 4, 4, 6))
+    elif k == "bench":
+        for i in range(1, 3):
+            pygame.draw.rect(s, shade(c, -0.35), (x + 2, y + i * (h // 3), w - 4, 1))
+    elif k == "counter":
+        pygame.draw.rect(s, shade(c, 0.2), (x + 2, y + 3, w - 4, 5))
+        pygame.draw.rect(s, ui.CREAM, (x + w - 26, y + 6, 10, 8))
+        for tx in range(x + 8, x + w - 40, 22):
+            pygame.draw.rect(s, ui.CREAM, (tx, y + 6, 14, 8))
+            pygame.draw.rect(s, ui.PINK, (tx + 3, y + 8, 4, 4))
+    elif k == "whiteboard":
+        for i in range(3):
+            pygame.draw.rect(s, (150, 140, 190), (x + 8, y + 5 + i * 5, w - 30 - i * 20, 1))
+    elif k == "stall":
+        pygame.draw.rect(s, shade(c, -0.3), (x + 6, y + 6, w - 12, h - 12), 1)
+        pygame.draw.rect(s, shade(c, -0.3), (x + w // 2, y + 6, 1, h - 12))
+        pygame.draw.rect(s, ui.YELLOW, (x + w // 2 - 6, y + h // 2, 3, 3))
+    elif k == "sofa":
+        pygame.draw.rect(s, shade(c, 0.18), (x + 3, y + 3, w - 6, h // 2))
+        pygame.draw.rect(s, shade(c, -0.25), (x + w // 2, y + 3, 1, h // 2))
+        pygame.draw.rect(s, shade(c, -0.35), (x, y + 2, 3, h - 4))
+        pygame.draw.rect(s, shade(c, -0.35), (x + w - 3, y + 2, 3, h - 4))
+    elif k == "sinks":
+        for sx in (x + 8, x + w - 26):
+            pygame.draw.ellipse(s, (150, 150, 200), (sx, y + 6, 18, 12))
+            pygame.draw.rect(s, ui.YELLOW, (sx + 8, y + 3, 2, 3))
+
+def draw_adult(s, fx, fy, kind):
+    cols = {"teacher": ((90, 60, 50), ui.BLUE), "counselor": ((60, 40, 90), ui.GOOD), "barista": ((200, 120, 80), ui.PINK)}
+    hair, shirt = cols.get(kind, ((60, 50, 80), ui.LAV))
+    pygame.draw.ellipse(s, SHADOW, (fx - 9, fy - 3, 18, 6))
+    pygame.draw.rect(s, (52, 42, 96), (fx - 6, fy - 13, 12, 13))
+    pygame.draw.rect(s, shade(shirt, -0.5), (fx - 9, fy - 30, 18, 18))
+    pygame.draw.rect(s, shirt, (fx - 8, fy - 29, 16, 16))
+    pygame.draw.rect(s, shade(shirt, 0.3), (fx - 8, fy - 29, 16, 2))
+    pygame.draw.rect(s, SKIN, (fx - 5, fy - 40, 10, 10))
+    pygame.draw.rect(s, hair, (fx - 6, fy - 42, 12, 5))
+    pygame.draw.rect(s, (30, 16, 56), (fx - 3, fy - 36, 1, 2))
+    pygame.draw.rect(s, (30, 16, 56), (fx + 2, fy - 36, 1, 2))
