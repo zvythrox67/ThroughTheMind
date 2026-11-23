@@ -243,3 +243,77 @@ class VoiceGame(MiniGame):
         left = max(0.0, self.DURATION - self.t)
         text(surf, "%d s left" % math.ceil(left), (W - 30, 20), 32, right=True)
         text(surf, "Steady: %d%%" % round(100 * self.in_zone / max(0.1, self.t)), (30, 20), 32)
+
+class CheckGame(MiniGame):
+    title = "Homework"
+    help = "Type each answer and press Enter. Then choose: R to re-check, or SPACE to trust yourself and move on."
+
+    def __init__(self, params):
+        super().__init__()
+        r = self.rng
+        self.qs = []
+        for i in range(5):
+            if i % 2 == 0:
+                a, b = r.randint(12, 49), r.randint(12, 49)
+                self.qs.append(("%d + %d" % (a, b), a + b))
+            else:
+                a, b = r.randint(3, 9), r.randint(6, 12)
+                self.qs.append(("%d x %d" % (a, b), a * b))
+        self.q = 0
+        self.input = ""
+        self.state = "answer"
+        self.rechecks = self.trusted = self.correct = self.q_checks = 0
+        self.msg = ""
+
+    def event(self, e):
+        if self.ready > 0 or self.done or e.type != pygame.KEYDOWN:
+            return
+        if self.state == "answer":
+            if pygame.K_0 <= e.key <= pygame.K_9 and len(self.input) < 4:
+                self.input += chr(e.key)
+            elif e.key == pygame.K_BACKSPACE:
+                self.input = self.input[:-1]
+            elif e.key == pygame.K_RETURN and self.input:
+                self.state = "decide"
+                self.msg = ""
+        elif self.state == "decide":
+            if e.key == pygame.K_r:
+                self.rechecks += 1
+                self.q_checks += 1
+                ok = int(self.input) == self.qs[self.q][1]
+                self.msg = ("Re-checking... same answer. It was right. (The doubt will come back.)" if ok
+                            else "Re-checking... something looks off. Maybe change it?")
+                self.state = "answer"
+                if not ok:
+                    self.input = ""
+            elif e.key == pygame.K_SPACE:
+                if int(self.input) == self.qs[self.q][1]:
+                    self.correct += 1
+                if self.q_checks == 0:
+                    self.trusted += 1
+                self.q += 1
+                self.input, self.q_checks, self.msg, self.state = "", 0, "", "answer"
+                if self.q >= len(self.qs):
+                    self.finish({"correct": self.correct, "rechecks": self.rechecks, "trusted": self.trusted})
+
+    def render(self, surf):
+        surf.fill(ui.CREAM)
+        for y in range(120, H, 36):
+            pygame.draw.line(surf, (190, 175, 235), (0, y), (W, y), 1)
+        pygame.draw.line(surf, ui.PINK, (110, 0), (110, H), 3)
+        if self.q >= len(self.qs):
+            return
+        text(surf, "Question %d of %d" % (self.q + 1, len(self.qs)), (150, 40), 36, ui.VIOLET)
+        text(surf, self.qs[self.q][0] + " = ?", (150, 150), 92, ui.INDIGO)
+        pygame.draw.rect(surf, ui.WHITE, (150, 280, 260, 70))
+        pygame.draw.rect(surf, ui.VIOLET, (150, 280, 260, 70), 4)
+        text(surf, self.input + ("_" if self.state == "answer" and int(self.t * 2) % 2 == 0 else ""), (170, 292), 66, ui.INDIGO)
+        if self.state == "decide":
+            panel(surf, (150, 390, 724, 140), (46, 27, 91, 245))
+            text(surf, "What if it's wrong?", (180, 405), 46, ui.YELLOW)
+            text(surf, "R  =  re-check it        SPACE  =  trust yourself and move on", (180, 470), 32)
+        elif self.msg:
+            text(surf, self.msg, (150, 400), 28, ui.PINK)
+        else:
+            text(surf, "Type your answer, then press Enter.", (150, 400), 28, ui.LAV_DK)
+        text(surf, "Re-checks: %d" % self.rechecks, (W - 40, 40), 32, ui.PINK, right=True)
