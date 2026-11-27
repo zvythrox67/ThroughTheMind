@@ -3,8 +3,8 @@
 Play Game Here: https://zvythrox.itch.io/through-the-mind
 
 
-A top-down pixel game about generalized anxiety disorder. You play Miku through **5 levels** (one school day each).
-Every level the anxiety gets worse. Each task switches into a different kind of mini-game.
+A top-down pixel game about generalized anxiety disorder. You play as Zee, an alien, through **5 levels** (one school day each).
+Every level the anxiety gets worse. Each task switches into a different kind of mini-game
 
 ## Run
 ```
